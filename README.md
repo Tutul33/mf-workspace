@@ -1,59 +1,227 @@
-# MfWorkspace
+# Angular 20 + Native Federation (Microfrontend) — Step-by-Step Guide
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.3.
+This guide explains how to build a **Host + Customer-App + Orders-App** microfrontend setup using **Angular 20** and **@angular-architects/native-federation**.
 
-## Development server
+---
 
-To start a local development server, run:
-
+## 🚀 Step 1: Create Angular Workspace
 ```bash
-ng serve
+ng new mf-workspace --create-application false
+cd mf-workspace
+```
+✔ Creates an empty workspace for multiple apps.
+
+---
+
+## 🚀 Step 2: Generate Applications
+```bash
+ng g application host-app
+ng g application customer-app
+ng g application orders-app
+```
+- **host-app** → main shell
+- **customer-app** → remote
+- **orders-app** → remote
+
+---
+
+## 🚀 Step 3: Install Native Federation
+```bash
+npm install @angular-architects/native-federation@latest --save-dev
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+---
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
+## 🚀 Step 4: Initialize Federation
+### Host
 ```bash
-ng generate component component-name
+ng g @angular-architects/native-federation:init --project=host-app --type=host --port=4200
+```
+### Customer Remote
+```bash
+ng g @angular-architects/native-federation:init --project=customer-app --type=remote --port=4301
+```
+### Orders Remote
+```bash
+ng g @angular-architects/native-federation:init --project=orders-app --type=remote --port=4302
+```
+➡ Press Enter when asked for project name.
+
+---
+
+# 🟦 Step 5: Configure **customer-app** (Remote)
+
+## 📁 5a. Folder Structure
+```
+customer-app/
+└─ src/app/
+   ├─ customer/
+   │   └─ home/
+   │       └─ home.ts
+   └─ customer-routes.module.ts
+federation.config.js
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+---
 
-```bash
-ng generate --help
+## 🛠 5b. federation.config.js
+```js
+const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
+
+module.exports = withNativeFederation({
+  name: 'customer-app',
+  exposes: {
+    './CustomerRoutes': './projects/customer-app/src/app/customer/customer-routes.module.ts',
+  },
+  shared: {
+    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
+  },
+  features: {
+    ignoreUnusedDeps: true
+  }
+});
 ```
 
-## Building
+---
 
-To build the project run:
+## 🛠 customer-routes.module.ts
+```ts
+import { NgModule } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { HomeComponent } from './home/home';
 
-```bash
-ng build
+@NgModule({
+  imports: [
+    RouterModule.forChild([
+      { path: '', component: HomeComponent }
+    ])
+  ]
+})
+export class CustomerRoutesModule {}
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+---
 
-## Running unit tests
+## 🧩 5d. home.ts (Standalone Component)
+```ts
+import { Component } from '@angular/core';
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
+@Component({
+  selector: 'app-home',
+  standalone: true,
+  template: `<h2>Customer Home</h2>`
+})
+export class HomeComponent {}
 ```
 
-## Running end-to-end tests
+---
 
-For end-to-end (e2e) testing, run:
+# 🟪 Step 5 (Orders App)
 
-```bash
-ng e2e
+## federation.config.js
+```js
+const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
+
+module.exports = withNativeFederation({
+  name: 'orders-app',
+  exposes: {
+    './OrdersRoutes': './projects/orders-app/src/app/orders/orders-routes.module.ts',
+  },
+  shared: {
+    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
+  },
+  features: {
+    ignoreUnusedDeps: true
+  }
+});
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## orders-routes.module.ts
+```ts
+import { NgModule } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { HomeComponent } from './home/home';
 
-## Additional Resources
+@NgModule({
+  imports: [
+    RouterModule.forChild([
+      { path: '', component: HomeComponent }
+    ])
+  ]
+})
+export class OrdersRoutesModule {}
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+---
+
+# 🟧 Step 6: Setup **host-app**
+
+## host-app/src/app/app.routes.ts
+```ts
+import { Routes } from '@angular/router';
+import { loadRemoteModule } from '@angular-architects/native-federation';
+
+export const routes: Routes = [
+  {
+    path: 'customers',
+    loadChildren: () =>
+      loadRemoteModule({
+        remoteEntry: 'http://localhost:4301/remoteEntry.json',
+        exposedModule: './CustomerRoutes',
+      }).then((m) => m.CustomerRoutesModule)
+  },
+  {
+    path: 'orders',
+    loadChildren: () =>
+      loadRemoteModule({
+        remoteEntry: 'http://localhost:4302/remoteEntry.json',
+        exposedModule: './OrdersRoutes',
+      }).then((m) => m.OrdersRoutesModule)
+  },
+  { path: '', redirectTo: '', pathMatch: 'full' }
+];
+```
+
+---
+
+# 🏁 Step 7: Run All Apps
+Open **3 terminals**:
+```bash
+ng serve customer-app --port 4301
+ng serve orders-app --port 4302
+ng serve host-app --port 4200
+```
+
+---
+
+# 🎉 Step 8: Test
+### ✔ Customer App
+http://localhost:4200/customers
+Displays:
+```
+Customer Home
+```
+
+### ✔ Orders App
+http://localhost:4200/orders
+Displays:
+```
+Orders Home
+```
+
+---
+
+# ✅ Microfrontend setup working with Angular 20 + Native Federation
+You now have:
+- A host container app
+- Two remote microfrontends
+- Federated routing
+- Standalone components
+- Angular 20 compatible configuration
+
+Let me know if you want:
+✔ GitHub-ready folder structure
+✔ Full working code repo
+✔ Additional remotes (products, dashboard)
+✔ Tailwind + Material setup for MFEs
+
