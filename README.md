@@ -210,7 +210,48 @@ Orders Home
 ```
 
 ---
+### Folder Structure:
+```
+MF-WORKSPACE
+│
+├── .angular
+├── .vscode
+├── dist
+├── node_modules
+│
+├── projects
+│   ├── customer-app
+│   │   ├── public
+│   │   ├── src
+│   │   ├── federation.config.js
+│   │   ├── tsconfig.app.json
+│   │   └── tsconfig.spec.json
+│   │
+│   ├── host-app
+│   │   ├── public
+│   │   ├── src
+│   │   ├── federation.config.js
+│   │   ├── tsconfig.app.json
+│   │   └── tsconfig.spec.json
+│   │
+│   └── orders-app
+│       ├── public
+│       ├── src
+│       ├── federation.config.js
+│       ├── tsconfig.app.json
+│       └── tsconfig.spec.json
+│
+├── .editorconfig
+├── .gitignore
+├── angular_20_microfrontend_app_guide.md
+├── angular.json
+├── package-lock.json
+├── package.json
+├── README.md
+└── tsconfig.json
 
+```
+---
 # ✅ Microfrontend setup working with Angular 20 + Native Federation
 You now have:
 - A host container app
